@@ -1,0 +1,42 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build') {
+            steps {
+                // Laravel projenizi derleme adımları
+                sh 'composer install'
+            }
+        }
+        stage('Test') {
+            steps {
+                // Test adımları, örneğin PHPUnit
+                sh './vendor/bin/phpunit'
+            }
+        }
+        stage('SonarQube Analysis') {
+            environment {
+                scannerHome = tool 'SonarScanner'
+            }
+            steps {
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                script {
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    }
+                }
+            }
+        }
+    }
+}
